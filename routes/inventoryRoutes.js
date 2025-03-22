@@ -4,6 +4,38 @@ const router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Inventory:
+ *       type: object
+ *       required:
+ *         - name
+ *         - category
+ *         - price
+ *         - stock
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The name of the inventory item.
+ *         category:
+ *           type: string
+ *           description: The category of the inventory item.
+ *         price:
+ *           type: number
+ *           description: The price of the inventory item.
+ *         stock:
+ *           type: number
+ *           description: The stock quantity of the inventory item.
+ *         description:
+ *           type: string
+ *           description: A description of the inventory item.
+ *         supplier:
+ *           type: string
+ *           description: The supplier of the inventory item.
+ */
+
+/**
+ * @swagger
  * tags:
  *   name: Inventory
  *   description: API for managing inventory items
@@ -25,16 +57,16 @@ const router = express.Router();
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Inventory'
+ *       404:
+ *         description: No inventory items found.
  *       500:
  *         description: Internal Server Error.
  */
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
     try {
-        const inventory = await getInventory();
-        res.status(200).json(inventory);
+        await getInventory(req, res, next); // Pass req, res, and next
     } catch (error) {
-        console.error("Error fetching inventory:", error);
-        res.status(500).json({ message: "Internal Server Error" });
+        next(error); // Pass the error to the error-handling middleware
     }
 });
 
@@ -55,17 +87,15 @@ router.get("/", async (req, res) => {
  *       201:
  *         description: Successfully created inventory item.
  *       400:
- *         description: Bad request.
+ *         description: Bad request (invalid input).
  *       500:
  *         description: Internal Server Error.
  */
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
     try {
-        const inventoryItem = await createInventory(req.body);
-        res.status(201).json(inventoryItem);
+        await createInventory(req, res, next); // Pass req, res, and next
     } catch (error) {
-        console.error("Error creating inventory item:", error);
-        res.status(error.status || 400).json({ message: error.message || "Bad Request" });
+        next(error); // Pass the error to the error-handling middleware
     }
 });
 
@@ -93,22 +123,17 @@ router.post("/", async (req, res) => {
  *       200:
  *         description: Successfully updated inventory item.
  *       400:
- *         description: Bad request.
+ *         description: Bad request (invalid input).
  *       404:
  *         description: Inventory item not found.
  *       500:
  *         description: Internal Server Error.
  */
-router.put("/:id", async (req, res) => {
+router.put("/:id", async (req, res, next) => {
     try {
-        const updatedInventory = await updateInventory(req.params.id, req.body);
-        if (!updatedInventory) {
-            return res.status(404).json({ message: "Inventory item not found" });
-        }
-        res.status(200).json(updatedInventory);
+        await updateInventory(req, res, next); // Pass req, res, and next
     } catch (error) {
-        console.error("Error updating inventory item:", error);
-        res.status(error.status || 500).json({ message: error.message || "Internal Server Error" });
+        next(error); // Pass the error to the error-handling middleware
     }
 });
 
@@ -134,16 +159,11 @@ router.put("/:id", async (req, res) => {
  *       500:
  *         description: Internal Server Error.
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req, res, next) => {
     try {
-        const deletedInventory = await deleteInventory(req.params.id);
-        if (!deletedInventory) {
-            return res.status(404).json({ message: "Inventory item not found" });
-        }
-        res.status(200).json({ message: "Inventory item deleted successfully" });
+        await deleteInventory(req, res, next); // Pass req, res, and next
     } catch (error) {
-        console.error("Error deleting inventory item:", error);
-        res.status(error.status || 500).json({ message: error.message || "Internal Server Error" });
+        next(error); // Pass the error to the error-handling middleware
     }
 });
 

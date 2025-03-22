@@ -10,14 +10,16 @@ const options = {
             description: 'API Documentation for Inventory Management',
         },
         servers: [
+
             {
-                url: 'http://localhost:5410',
-                description: 'Local server',
+                url: 'https://inventory-crud-api.onrender.com',
+                description: 'Production server',
             },
             {
                 url: 'http://localhost:5410',
-                description: 'Production server',
+                description: 'Local server',
             }
+
         ],
         components: {
             schemas: {
