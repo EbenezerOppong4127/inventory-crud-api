@@ -10,7 +10,6 @@ const options = {
             description: 'API Documentation for Inventory Management',
         },
         servers: [
-
             {
                 url: 'https://inventory-crud-api.onrender.com',
                 description: 'Production server',
@@ -18,8 +17,17 @@ const options = {
             {
                 url: 'http://localhost:5410',
                 description: 'Local server',
-            }
-
+            },
+        ],
+        tags: [ // Define custom tags here
+            {
+                name: 'Inventory',
+                description: 'API for managing inventory items',
+            },
+            {
+                name: 'Users',
+                description: 'API for managing users',
+            },
         ],
         components: {
             schemas: {
@@ -30,68 +38,68 @@ const options = {
                         _id: {
                             type: 'string',
                             description: 'Auto-generated ID',
-                            readOnly: true
+                            readOnly: true,
                         },
                         name: {
                             type: 'string',
-                            description: 'Name of the inventory item'
+                            description: 'Name of the inventory item',
                         },
                         category: {
                             type: 'string',
-                            description: 'Category of the item'
+                            description: 'Category of the item',
                         },
                         price: {
                             type: 'number',
-                            description: 'Price of the item'
+                            description: 'Price of the item',
                         },
                         stock: {
                             type: 'number',
-                            description: 'Stock available'
+                            description: 'Stock available',
                         },
                         createdAt: {
                             type: 'string',
                             format: 'date-time',
-                            description: 'Timestamp of creation'
-                        }
-                    }
+                            description: 'Timestamp of creation',
+                        },
+                    },
                 },
-                User: {  // Add the User schema here
+                User: {
                     type: 'object',
                     required: ['username', 'email', 'password'],
                     properties: {
                         _id: {
                             type: 'string',
                             description: 'Auto-generated ID',
-                            readOnly: true
+                            readOnly: true,
                         },
                         username: {
                             type: 'string',
-                            description: 'User\'s unique username'
+                            description: "User's unique username",
                         },
                         email: {
                             type: 'string',
                             format: 'email',
-                            description: 'User\'s email address'
+                            description: "User's email address",
                         },
                         password: {
                             type: 'string',
                             format: 'password',
-                            description: 'User\'s password (hashed)'
+                            description: "User's password (hashed)",
                         },
                         role: {
                             type: 'string',
                             enum: ['admin', 'user'],
-                            description: 'Role of the user'
+                            description: 'Role of the user',
                         },
                         createdAt: {
                             type: 'string',
                             format: 'date-time',
-                            description: 'Timestamp of user creation'
-                        }
-                    }
-                }
-            }
-        }
+                            description: 'Timestamp of user creation',
+                        },
+                    },
+                },
+            },
+        },
     },
     apis: ['./routes/*.js'], // Ensure user routes are documented
 };
