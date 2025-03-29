@@ -15,6 +15,58 @@ const { authenticateJWT } = require('../middlewares/authMiddleware');
  *   description: Inventory management endpoints
  */
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Inventory:
+ *       type: object
+ *       required:
+ *         - name
+ *         - quantity
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: The auto-generated ID
+ *         name:
+ *           type: string
+ *           minLength: 3
+ *           maxLength: 50
+ *           example: "Premium Widget"
+ *         quantity:
+ *           type: number
+ *           minimum: 0
+ *           example: 100
+ *         description:
+ *           type: string
+ *           maxLength: 255
+ *           example: "High-quality widget"
+ *         category:
+ *           type: string
+ *           example: "Electronics"
+ *         price:
+ *           type: number
+ *           minimum: 0
+ *           example: 29.99
+ *         stock:
+ *           type: number
+ *           minimum: 0
+ *           example: 50
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *       example:
+ *         name: "Premium Widget"
+ *         quantity: 100
+ *         description: "High-quality widget"
+ *         category: "Electronics"
+ *         price: 29.99
+ *         stock: 50
+ */
+
 // Apply authentication middleware to all routes
 router.use(authenticateJWT);
 
@@ -28,13 +80,17 @@ router.use(authenticateJWT);
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of inventory items
+ *         description: Successfully retrieved inventory items
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Inventory'
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get('/', getInventory);
 
@@ -54,7 +110,17 @@ router.get('/', getInventory);
  *             $ref: '#/components/schemas/Inventory'
  *     responses:
  *       201:
- *         description: Inventory item created
+ *         description: Successfully created inventory item
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Inventory'
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post('/', createInventory);
 
@@ -72,6 +138,7 @@ router.post('/', createInventory);
  *         required: true
  *         schema:
  *           type: string
+ *         description: ID of the inventory item to update
  *     requestBody:
  *       required: true
  *       content:
@@ -80,7 +147,19 @@ router.post('/', createInventory);
  *             $ref: '#/components/schemas/Inventory'
  *     responses:
  *       200:
- *         description: Inventory item updated
+ *         description: Successfully updated inventory item
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Inventory'
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Inventory item not found
+ *       500:
+ *         description: Internal server error
  */
 router.put('/:id', updateInventory);
 
@@ -98,9 +177,16 @@ router.put('/:id', updateInventory);
  *         required: true
  *         schema:
  *           type: string
+ *         description: ID of the inventory item to delete
  *     responses:
  *       204:
- *         description: Inventory item deleted
+ *         description: Successfully deleted inventory item
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Inventory item not found
+ *       500:
+ *         description: Internal server error
  */
 router.delete('/:id', deleteInventory);
 
