@@ -69,14 +69,9 @@ const registerUser = async (req, res, next) => {
 };
 
 
+// controllers/userController.js
 const loginUser = async (req, res, next) => {
     try {
-        // Validate request body
-        const { error } = loginSchema.validate(req.body);
-        if (error) {
-            return next(new AppError(400, error.details[0].message));
-        }
-
         const { email, password } = req.body;
 
         // 1) Check if email and password exist
@@ -85,23 +80,22 @@ const loginUser = async (req, res, next) => {
         }
 
         // 2) Check if user exists && password is correct
-        const user = await User.findOne({ email }).select('+password');
+        const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
         if (!user || !(await user.comparePassword(password))) {
             return next(new AppError(401, 'Incorrect email or password'));
         }
 
-        // 3) Generate JWT token
+        // 3) If everything ok, send token to client
         const token = jwt.sign(
             { id: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES }
         );
 
-        // 4) Remove password from output
+        // Remove password from output
         user.password = undefined;
 
-        // 5) Send response
         res.status(200).json({
             status: 'success',
             token,
@@ -113,7 +107,6 @@ const loginUser = async (req, res, next) => {
         next(error);
     }
 };
-
 const getAllUsers = async (req, res, next) => {
     try {
         // Check if user is admin
