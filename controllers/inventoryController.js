@@ -1,4 +1,4 @@
-const Inventory = require('../models/inventory');
+const Inventory = require('../models/Inventory');
 const { inventorySchema } = require('../validation/inventoryValidation');
 const { AppError } = require('../middlewares/errorMiddleware');
 
