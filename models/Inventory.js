@@ -1,15 +1,31 @@
 const mongoose = require('mongoose');
 
-const InventorySchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    category: { type: String, required: true },
-    price: { type: Number, required: true, min: 0 },
-    stock: { type: Number, required: true, min: 1 },
-    description: { type: String },
-    supplier: { type: String },
-    createdAt: { type: Date, default: Date.now },
+const inventorySchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'An inventory item must have a name'],
+        unique: true,
+        trim: true,
+        minlength: [3, 'Name must have at least 3 characters'],
+        maxlength: [50, 'Name must have at most 50 characters']
+    },
+    quantity: {
+        type: Number,
+        required: [true, 'An inventory item must have a quantity'],
+        min: [0, 'Quantity must be at least 0']
+    },
+    description: {
+        type: String,
+        trim: true,
+        maxlength: [255, 'Description must have at most 255 characters']
+    }
+}, {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
-const Inventory = mongoose.model('Inventory', InventorySchema);
+// Check if model already exists before defining it
+const Inventory = mongoose.models.Inventory || mongoose.model('Inventory', inventorySchema);
 
 module.exports = Inventory;

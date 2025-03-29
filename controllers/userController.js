@@ -1,75 +1,139 @@
-const User = require("../models/User");
-const userValidationSchema = require("../validation/userValidation");
+const User = require('../models/User');
+const { userSchema, loginSchema } = require('../validation/userValidation');
+const { AppError } = require('../middlewares/errorMiddleware');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
 
-// Get all users
-exports.getUsers = async (req, res, next) => {
-    try {
-        const users = await User.find();
-        if (!users || users.length === 0) {
-            return res.status(404).json({ message: "No users found" });
-        }
-        res.status(200).json(users);
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
+dotenv.config();
+
+const createToken = (userId, role) => {
+    return jwt.sign(
+        { id: userId, role },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES }
+    );
 };
 
-// Get single user by ID
-exports.getUserById = async (req, res, next) => {
+const registerUser = async (req, res, next) => {
     try {
-        const user = await User.findById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-        res.status(200).json(user);
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-};
-
-// Create new user
-exports.createUser = async (req, res, next) => {
-    try {
-        const { error } = userValidationSchema.validate(req.body);
+        // Validate request body
+        const { error } = userSchema.validate(req.body, { abortEarly: false });
         if (error) {
-            return res.status(400).json({ message: error.details[0].message });
+            const messages = error.details.map(detail => detail.message).join(', ');
+            return next(new AppError(400, messages));
         }
 
-        const user = new User(req.body);
-        await user.save();
-        res.status(201).json(user);
+        const { firstName, lastName, email, password, role = 'user' } = req.body;
+
+        // Check if user exists (case-insensitive)
+        const existingUser = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        if (existingUser) {
+            return next(new AppError(409, 'Email address is already registered'));
+        }
+
+        // Create new user
+        const newUser = await User.create({
+            firstName,
+            lastName,
+            email: email.toLowerCase(),
+            password,
+            role
+        });
+
+        // Generate token
+        const token = createToken(newUser._id, newUser.role);
+
+        // Prepare user data for response
+        const userData = {
+            _id: newUser._id,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            email: newUser.email,
+            role: newUser.role,
+            createdAt: newUser.createdAt
+        };
+
+        res.status(201).json({
+            status: 'success',
+            token,
+            data: { user: userData }
+        });
+
     } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
+        // Handle duplicate key error (in case unique index check fails)
+        if (error.code === 11000) {
+            return next(new AppError(409, 'Email address is already registered'));
+        }
+        next(error);
     }
 };
 
-// Update user
-exports.updateUser = async (req, res, next) => {
+
+const loginUser = async (req, res, next) => {
     try {
-        const { error } = userValidationSchema.validate(req.body);
+        // Validate request body
+        const { error } = loginSchema.validate(req.body);
         if (error) {
-            return res.status(400).json({ message: error.details[0].message });
+            return next(new AppError(400, error.details[0].message));
         }
 
-        const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
+        const { email, password } = req.body;
+
+        // 1) Check if email and password exist
+        if (!email || !password) {
+            return next(new AppError(400, 'Please provide email and password'));
         }
-        res.status(200).json(user);
+
+        // 2) Check if user exists && password is correct
+        const user = await User.findOne({ email }).select('+password');
+
+        if (!user || !(await user.comparePassword(password))) {
+            return next(new AppError(401, 'Incorrect email or password'));
+        }
+
+        // 3) Generate JWT token
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES }
+        );
+
+        // 4) Remove password from output
+        user.password = undefined;
+
+        // 5) Send response
+        res.status(200).json({
+            status: 'success',
+            token,
+            data: {
+                user
+            }
+        });
     } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
+        next(error);
     }
 };
 
-// Delete user
-exports.deleteUser = async (req, res, next) => {
+const getAllUsers = async (req, res, next) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
+        // Check if user is admin
+        if (req.user.role !== 'admin') {
+            return next(new AppError(403, 'Only admin users can access this resource'));
         }
-        res.status(204).send();
+
+        const users = await User.find()
+            .select('-password -__v')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            status: 'success',
+            results: users.length,
+            data: { users }
+        });
+
     } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
+        next(error);
     }
 };
+
+module.exports = { registerUser, loginUser, getAllUsers };

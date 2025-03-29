@@ -1,25 +1,79 @@
-const errorMiddleware = (err, req, res, next) => {
-    console.error(`[Error] ${err.message}`);
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Error:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: false
+ *         status:
+ *           type: string
+ *           example: "error"
+ *         statusCode:
+ *           type: number
+ *           example: 500
+ *         message:
+ *           type: string
+ *           example: "Internal Server Error"
+ *         stack:
+ *           type: string
+ *           description: Only shown in development
+ *           example: "Error: Something went wrong\n    at ..."
+ */
 
-    // Default to status 500 (Internal Server Error)
-    let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+class AppError extends Error {
+    constructor(statusCode, message) {
+        super(message);
+        this.statusCode = statusCode || 500;
+        this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+        this.isOperational = true;
+        Error.captureStackTrace(this, this.constructor);
+    }
+}
 
-    // Custom error handling for specific error types
-    if (err.name === "ValidationError") {
-        statusCode = 400; // Bad Request
-    } else if (err.name === "CastError") {
-        statusCode = 400; // Invalid Object ID
-        err.message = "Invalid ID format";
+const errorHandler = (err, req, res, next) => {
+    // Default values
+    err.statusCode = err.statusCode || 500;
+    err.status = err.status || 'error';
+
+    // Handle specific error types
+    if (err.name === 'ValidationError') {
+        err.statusCode = 400;
+        err.message = 'Validation Error: ' + err.message;
+    } else if (err.name === 'CastError') {
+        err.statusCode = 400;
+        err.message = 'Invalid ID format';
     } else if (err.code === 11000) {
-        statusCode = 400; // Duplicate Key Error (e.g., unique email)
-        err.message = "Duplicate field value entered";
+        err.statusCode = 400;
+        err.message = 'Duplicate field value entered';
     }
 
-    res.status(statusCode).json({
+    // Log error in development
+    if (process.env.NODE_ENV === 'development') {
+        console.error('[Error]', {
+            status: err.status,
+            statusCode: err.statusCode,
+            message: err.message,
+            stack: err.stack
+        });
+    }
+
+    // Send error response
+    res.status(err.statusCode).json({
         success: false,
-        message: err.message || "Internal Server Error",
-        stack: process.env.NODE_ENV === "production" ? null : err.stack, // Hide stack trace in production
+        status: err.status,
+        statusCode: err.statusCode,
+        message: err.message,
+        ...(process.env.NODE_ENV === 'development' && {
+            stack: err.stack,
+            error: err
+        })
     });
 };
 
-module.exports = errorMiddleware;
+module.exports = {
+    AppError,
+    errorHandler
+};

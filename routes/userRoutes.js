@@ -1,41 +1,70 @@
-const express = require("express");
-const { getUsers, createUser, updateUser, deleteUser } = require("../controllers/userController");
+const express = require('express');
 const router = express.Router();
+const { registerUser, loginUser, getAllUsers } = require('../controllers/userController');
+const { authenticateJWT } = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
- * /api/users:
- *   get:
- *     summary: Get all users
- *     description: Returns a list of all registered users.
- *     responses:
- *       200:
- *         description: A list of users
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/User'
- *       404:
- *         description: No users found
- *       500:
- *         description: Internal server error
+ * tags:
+ *   name: Users
+ *   description: User management endpoints
  */
-router.get("/", async (req, res, next) => {
-    try {
-        await getUsers(req, res, next); // Pass req, res, and next
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-});
 
 /**
  * @swagger
- * /api/users:
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ *   schemas:
+ *     User:
+ *       type: object
+ *       required:
+ *         - firstName
+ *         - lastName
+ *         - email
+ *         - password
+ *       properties:
+ *         firstName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 50
+ *           example: "John"
+ *         lastName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 50
+ *           example: "Doe"
+ *         email:
+ *           type: string
+ *           format: email
+ *           example: "user@example.com"
+ *         password:
+ *           type: string
+ *           minLength: 8
+ *           example: "Password@123"
+ *         role:
+ *           type: string
+ *           enum: [user, admin]
+ *           default: "user"
+ *     AuthResponse:
+ *       type: object
+ *       properties:
+ *         token:
+ *           type: string
+ *           example: "eyJhbGciOiJIUzI1NiIs..."
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ */
+
+/**
+ * @swagger
+ * /api/users/register:
  *   post:
  *     summary: Register a new user
- *     description: Creates a new user with the provided data.
+ *     tags: [Users]
  *     requestBody:
  *       required: true
  *       content:
@@ -44,84 +73,81 @@ router.get("/", async (req, res, next) => {
  *             $ref: '#/components/schemas/User'
  *     responses:
  *       201:
- *         description: Successfully registered user
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
  *       400:
- *         description: Bad request (invalid input)
+ *         description: Validation error
+ *       409:
+ *         description: Email already exists
  *       500:
  *         description: Internal server error
  */
-router.post("/", async (req, res, next) => {
-    try {
-        await createUser(req, res, next); // Pass req, res, and next
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-});
+router.post('/register', registerUser);
 
 /**
  * @swagger
- * /api/users/{id}:
- *   put:
- *     summary: Update user details
- *     description: Updates a user's information by ID.
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: The ID of the user to update
- *         schema:
- *           type: string
+ * /api/users/login:
+ *   post:
+ *     summary: Authenticate user and get JWT token
+ *     tags: [Users]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/User'
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
+ *               password:
+ *                 type: string
+ *                 example: "Password@123"
  *     responses:
  *       200:
- *         description: Successfully updated user
- *       400:
- *         description: Bad request (invalid input)
- *       404:
- *         description: User not found
+ *         description: Successfully authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       401:
+ *         description: Invalid credentials
  *       500:
  *         description: Internal server error
  */
-router.put("/:id", async (req, res, next) => {
-    try {
-        await updateUser(req, res, next); // Pass req, res, and next
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-});
+router.post('/login', loginUser);
 
 /**
  * @swagger
- * /api/users/{id}:
- *   delete:
- *     summary: Delete a user
- *     description: Deletes a user by their ID.
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: The ID of the user to delete
- *         schema:
- *           type: string
+ * /api/users:
+ *   get:
+ *     summary: Get all users (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Successfully deleted user
- *       404:
- *         description: User not found
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (non-admin access)
  *       500:
  *         description: Internal server error
  */
-router.delete("/:id", async (req, res, next) => {
-    try {
-        await deleteUser(req, res, next); // Pass req, res, and next
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-});
+router.get('/', authenticateJWT, getAllUsers);
 
 module.exports = router;

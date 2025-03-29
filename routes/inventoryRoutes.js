@@ -1,45 +1,22 @@
-const express = require("express");
-const { getInventory, createInventory, updateInventory, deleteInventory } = require("../controllers/inventoryController");
+const express = require('express');
 const router = express.Router();
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     Inventory:
- *       type: object
- *       required:
- *         - name
- *         - category
- *         - price
- *         - stock
- *       properties:
- *         name:
- *           type: string
- *           description: The name of the inventory item.
- *         category:
- *           type: string
- *           description: The category of the inventory item.
- *         price:
- *           type: number
- *           description: The price of the inventory item.
- *         stock:
- *           type: number
- *           description: The stock quantity of the inventory item.
- *         description:
- *           type: string
- *           description: A description of the inventory item.
- *         supplier:
- *           type: string
- *           description: The supplier of the inventory item.
- */
+const {
+    getInventory,
+    createInventory,
+    updateInventory,
+    deleteInventory
+} = require('../controllers/inventoryController');
+const { authenticateJWT } = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
  * tags:
  *   name: Inventory
- *   description: API for managing inventory items
+ *   description: Inventory management endpoints
  */
+
+// Apply authentication middleware to all routes
+router.use(authenticateJWT);
 
 /**
  * @swagger
@@ -47,28 +24,19 @@ const router = express.Router();
  *   get:
  *     summary: Get all inventory items
  *     tags: [Inventory]
- *     description: Returns a list of all inventory items.
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: A list of inventory items.
+ *         description: List of inventory items
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Inventory'
- *       404:
- *         description: No inventory items found.
- *       500:
- *         description: Internal Server Error.
  */
-router.get("/", async (req, res, next) => {
-    try {
-        await getInventory(req, res, next); // Pass req, res, and next
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-});
+router.get('/', getInventory);
 
 /**
  * @swagger
@@ -76,7 +44,8 @@ router.get("/", async (req, res, next) => {
  *   post:
  *     summary: Create a new inventory item
  *     tags: [Inventory]
- *     description: Creates a new inventory item with the provided data.
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -85,32 +54,22 @@ router.get("/", async (req, res, next) => {
  *             $ref: '#/components/schemas/Inventory'
  *     responses:
  *       201:
- *         description: Successfully created inventory item.
- *       400:
- *         description: Bad request (invalid input).
- *       500:
- *         description: Internal Server Error.
+ *         description: Inventory item created
  */
-router.post("/", async (req, res, next) => {
-    try {
-        await createInventory(req, res, next); // Pass req, res, and next
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-});
+router.post('/', createInventory);
 
 /**
  * @swagger
  * /api/inventory/{id}:
  *   put:
- *     summary: Update an existing inventory item
+ *     summary: Update an inventory item
  *     tags: [Inventory]
- *     description: Updates an existing inventory item by its ID.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         description: The ID of the inventory item to update.
  *         schema:
  *           type: string
  *     requestBody:
@@ -121,21 +80,9 @@ router.post("/", async (req, res, next) => {
  *             $ref: '#/components/schemas/Inventory'
  *     responses:
  *       200:
- *         description: Successfully updated inventory item.
- *       400:
- *         description: Bad request (invalid input).
- *       404:
- *         description: Inventory item not found.
- *       500:
- *         description: Internal Server Error.
+ *         description: Inventory item updated
  */
-router.put("/:id", async (req, res, next) => {
-    try {
-        await updateInventory(req, res, next); // Pass req, res, and next
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-});
+router.put('/:id', updateInventory);
 
 /**
  * @swagger
@@ -143,28 +90,18 @@ router.put("/:id", async (req, res, next) => {
  *   delete:
  *     summary: Delete an inventory item
  *     tags: [Inventory]
- *     description: Deletes an inventory item by its ID.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         description: The ID of the inventory item to delete.
  *         schema:
  *           type: string
  *     responses:
- *       200:
- *         description: Successfully deleted inventory item.
- *       404:
- *         description: Inventory item not found.
- *       500:
- *         description: Internal Server Error.
+ *       204:
+ *         description: Inventory item deleted
  */
-router.delete("/:id", async (req, res, next) => {
-    try {
-        await deleteInventory(req, res, next); // Pass req, res, and next
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-});
+router.delete('/:id', deleteInventory);
 
 module.exports = router;

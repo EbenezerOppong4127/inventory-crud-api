@@ -1,61 +1,199 @@
-const Inventory = require("../models/Inventory");
-const inventorySchema = require("../validation/inventoryValidation");
+const Inventory = require('../models/inventory');
+const { inventorySchema } = require('../validation/inventoryValidation');
+const { AppError } = require('../middlewares/errorMiddleware');
 
-// Get all inventory items
-exports.getInventory = async (req, res, next) => {
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Inventory:
+ *       type: object
+ *       required:
+ *         - name
+ *         - quantity
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: The auto-generated ID
+ *         name:
+ *           type: string
+ *           minLength: 3
+ *           maxLength: 50
+ *           example: "Premium Widget"
+ *         quantity:
+ *           type: number
+ *           minimum: 0
+ *           example: 100
+ *         description:
+ *           type: string
+ *           maxLength: 255
+ *           example: "High-quality widget"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ */
+
+const validateInventory = (data) => {
+    const { error } = inventorySchema.validate(data, { abortEarly: false });
+    if (error) {
+        const messages = error.details.map(detail => detail.message).join(', ');
+        throw new AppError(400, `Validation Error: ${messages}`);
+    }
+};
+
+/**
+ * @swagger
+ * /api/inventory:
+ *   get:
+ *     summary: Get all inventory items
+ *     tags: [Inventory]
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved inventory
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Inventory'
+ */
+const getInventory = async (req, res, next) => {
     try {
-        const items = await Inventory.find();
-        if (!items || items.length === 0) {
-            return res.status(404).json({ message: "No inventory items found" });
+        const inventory = await Inventory.find().sort({ createdAt: -1 });
+        res.status(200).json({
+            status: 'success',
+            results: inventory.length,
+            data: { inventory }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * @swagger
+ * /api/inventory:
+ *   post:
+ *     summary: Create a new inventory item
+ *     tags: [Inventory]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Inventory'
+ *     responses:
+ *       201:
+ *         description: Inventory item created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Inventory'
+ */
+const createInventory = async (req, res, next) => {
+    try {
+        validateInventory(req.body);
+        const newItem = await Inventory.create(req.body);
+        res.status(201).json({
+            status: 'success',
+            data: { inventory: newItem }
+        });
+    } catch (error) {
+        if (error.code === 11000) {
+            next(new AppError(400, 'Inventory item with this name already exists'));
+        } else {
+            next(error);
         }
-        res.status(200).json(items);
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
     }
 };
 
-// Create a new inventory item
-exports.createInventory = async (req, res, next) => {
+/**
+ * @swagger
+ * /api/inventory/{id}:
+ *   put:
+ *     summary: Update an inventory item
+ *     tags: [Inventory]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Inventory'
+ *     responses:
+ *       200:
+ *         description: Inventory item updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Inventory'
+ */
+const updateInventory = async (req, res, next) => {
     try {
-        // Validate the request body
-        await inventorySchema.validate(req.body, { abortEarly: false });
+        validateInventory(req.body);
+        const updatedItem = await Inventory.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
 
-        // Create and save the new inventory item
-        const newItem = new Inventory(req.body);
-        await newItem.save();
-        res.status(201).json(newItem);
-    } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
-    }
-};
-
-// Update an existing inventory item
-exports.updateInventory = async (req, res, next) => {
-    try {
-        // Validate the request body
-        await inventorySchema.validate(req.body, { abortEarly: false });
-
-        // Find and update the inventory item
-        const updatedItem = await Inventory.findByIdAndUpdate(req.params.id, req.body, { new: true });
         if (!updatedItem) {
-            return res.status(404).json({ message: "Item not found" });
+            throw new AppError(404, 'No inventory item found with that ID');
         }
-        res.status(200).json(updatedItem);
+
+        res.status(200).json({
+            status: 'success',
+            data: { inventory: updatedItem }
+        });
     } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
+        next(error);
     }
 };
 
-// Delete an inventory item
-exports.deleteInventory = async (req, res, next) => {
+/**
+ * @swagger
+ * /api/inventory/{id}:
+ *   delete:
+ *     summary: Delete an inventory item
+ *     tags: [Inventory]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Inventory item deleted
+ */
+const deleteInventory = async (req, res, next) => {
     try {
-        // Find and delete the inventory item
         const deletedItem = await Inventory.findByIdAndDelete(req.params.id);
+
         if (!deletedItem) {
-            return res.status(404).json({ message: "Item not found" });
+            throw new AppError(404, 'No inventory item found with that ID');
         }
-        res.status(200).json({ message: "Item deleted successfully" });
+
+        res.status(204).json({
+            status: 'success',
+            data: null
+        });
     } catch (error) {
-        next(error); // Pass the error to the error-handling middleware
+        next(error);
     }
+};
+
+module.exports = {
+    getInventory,
+    createInventory,
+    updateInventory,
+    deleteInventory
 };
