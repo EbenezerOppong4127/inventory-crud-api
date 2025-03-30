@@ -20,6 +20,21 @@ const getInventory = async (req, res, next) => {
     }
 };
 
+const getInventoryById = async (req, res, next) => {
+    try {
+        const item = await Inventory.findById(req.params.id);
+        if (!item) {
+            throw new AppError(404, 'Inventory item not found');
+        }
+        res.status(200).json({
+            status: 'success',
+            data: { inventory: item }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const createInventory = async (req, res, next) => {
     try {
         validateInventory(req.body);
@@ -66,6 +81,7 @@ const deleteInventory = async (req, res, next) => {
 
 module.exports = {
     getInventory,
+    getInventoryById,
     createInventory,
     updateInventory,
     deleteInventory

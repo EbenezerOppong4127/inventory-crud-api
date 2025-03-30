@@ -129,4 +129,107 @@ const getAllUsers = async (req, res, next) => {
     }
 };
 
-module.exports = { registerUser, loginUser, getAllUsers };
+
+// Add these new controller methods to your existing userController.js
+
+const getUserById = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.params.id).select('-password -__v');
+
+        if (!user) {
+            return next(new AppError(404, 'User not found'));
+        }
+
+        // Only allow admin or the user themselves to access this data
+        if (req.user.role !== 'admin' && req.user.id !== user._id.toString()) {
+            return next(new AppError(403, 'You are not authorized to access this resource'));
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: { user }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const updateUser = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        // Only allow admin or the user themselves to update
+        if (req.user.role !== 'admin' && req.user.id !== id) {
+            return next(new AppError(403, 'You are not authorized to perform this action'));
+        }
+
+        // Validate request body
+        const { error } = userSchema.validate(req.body, { abortEarly: false, allowUnknown: true });
+        if (error) {
+            const messages = error.details.map(detail => detail.message).join(', ');
+            return next(new AppError(400, messages));
+        }
+
+        // Prevent role changes unless admin
+        if (req.body.role && req.user.role !== 'admin') {
+            return next(new AppError(403, 'Only admins can change user roles'));
+        }
+
+        // Prevent email changes
+        if (req.body.email) {
+            return next(new AppError(400, 'Email cannot be changed'));
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            req.body,
+            { new: true, runValidators: true }
+        ).select('-password -__v');
+
+        if (!updatedUser) {
+            return next(new AppError(404, 'User not found'));
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: { user: updatedUser }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const deleteUser = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        // Only allow admin or the user themselves to delete
+        if (req.user.role !== 'admin' && req.user.id !== id) {
+            return next(new AppError(403, 'You are not authorized to perform this action'));
+        }
+
+        const user = await User.findByIdAndDelete(id);
+
+        if (!user) {
+            return next(new AppError(404, 'User not found'));
+        }
+
+        res.status(204).json({
+            status: 'success',
+            data: null
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Update your exports to include the new methods
+module.exports = {
+    registerUser,
+    loginUser,
+    getAllUsers,
+    getUserById,
+    updateUser,
+    deleteUser
+};
+

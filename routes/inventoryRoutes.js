@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
     getInventory,
+    getInventoryById,
     createInventory,
     updateInventory,
     deleteInventory
@@ -18,6 +19,11 @@ const { authenticateJWT } = require('../middlewares/authMiddleware');
 /**
  * @swagger
  * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
  *   schemas:
  *     Inventory:
  *       type: object
@@ -93,6 +99,37 @@ router.use(authenticateJWT);
  *         description: Internal server error
  */
 router.get('/', getInventory);
+
+/**
+ * @swagger
+ * /api/inventory/{id}:
+ *   get:
+ *     summary: Get a single inventory item by ID
+ *     tags: [Inventory]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the inventory item to retrieve
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved inventory item
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Inventory'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Inventory item not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:id', getInventoryById);
 
 /**
  * @swagger
