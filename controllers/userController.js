@@ -164,7 +164,7 @@ const updateUser = async (req, res, next) => {
         }
 
         // Validate request body
-        const { error } = userSchema.validate(req.body, { abortEarly: false, allowUnknown: true });
+        const { error } = userSchema.validate(req.body, { abortEarly: false });
         if (error) {
             const messages = error.details.map(detail => detail.message).join(', ');
             return next(new AppError(400, messages));
@@ -175,14 +175,24 @@ const updateUser = async (req, res, next) => {
             return next(new AppError(403, 'Only admins can change user roles'));
         }
 
-        // Prevent email changes
+        // Check if email is being updated to an existing email
         if (req.body.email) {
-            return next(new AppError(400, 'Email cannot be changed'));
+            const existingUser = await User.findOne({
+                email: req.body.email.toLowerCase(),
+                _id: { $ne: id } // Exclude current user
+            });
+
+            if (existingUser) {
+                return next(new AppError(400, 'Email is already in use'));
+            }
         }
 
         const updatedUser = await User.findByIdAndUpdate(
             id,
-            req.body,
+            {
+                ...req.body,
+                email: req.body.email ? req.body.email.toLowerCase() : undefined
+            },
             { new: true, runValidators: true }
         ).select('-password -__v');
 
